@@ -10,7 +10,7 @@ If you want to know gory details, run `imdb -vv {query}`.
 # Installation
 
 ```
-git clone git@github.com:/earlye/imdb
+git clone git@github.com:/earlye/imdb.git
 cd imdb
 ln -s $(pwd)/imdb.py {somewhere-on-path}/imdb
 ```
