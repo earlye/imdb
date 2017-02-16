@@ -17,3 +17,20 @@ ln -s $(pwd)/imdb.py {somewhere-on-path}/imdb
 
 Or, don't install it, and from wherever you are, run
 `{path-to}/imdb.py {query}` instead.
+
+# New Features
+
+_Most Recent Last. Doesn't include bug fixes, or any features I forgot
+to list. Maybe that last bit was obvious :-D_
+
+* `-i {glob-filter}` Include only the types specified by `{glob-filter}`
+Possible types include:
+
+  - Actor
+  - Actress
+  - Feature
+  - Tv Movie
+  - Tv Series
+  - Tv Special
+  - Video
+  - Video Game

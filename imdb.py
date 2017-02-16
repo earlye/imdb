@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import fnmatch
 import json
 import os
 import requests
@@ -60,7 +61,7 @@ class Entry:
 
     @staticmethod
     def buildFormat():
-        Entry.fmt = u"{{0:{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}}".format(Entry.widths[0],Entry.widths[1],Entry.widths[2],Entry.widths[3])
+        Entry.fmt = u"{{0:{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}}".format(max(1,Entry.widths[0]),max(1,Entry.widths[1]),max(1,Entry.widths[2]),max(1,Entry.widths[3]))
 
     @staticmethod
     def getHeader():
@@ -103,6 +104,7 @@ class Entry:
     
 def main(argv):
     parser = argparse.ArgumentParser()
+    parser.add_argument('-i','--include',dest='include',default='*',help='Include Glob Filter');
     parser.add_argument('-v','--verbose',dest='verbose',action='store_true',help='Be verbose');
     parser.add_argument('-vv','--reallyVerbose',dest='reallyVerbose',action='store_true',help='Be verbose');
     parser.add_argument(dest='query',nargs='+',help='query')
@@ -140,24 +142,13 @@ def main(argv):
         if reallyVerbose:
             pprint(response)
 
-        typed = []
-        untyped = []
         generic = []
         if 'd' in response: 
-            for entry in response['d']:
-                generic.append(Entry(entry))
-                if 'q' in entry:
-                    entryName=entry['l']
-                    entryType=entry['q']
-                    entryYear=defaultifyMap(entry,'y',"????")
-                    typed.append(u"{} {:9} {}".format(entryYear,string.capwords(entryType),entryName))
-                else:
-                    entryName=entry['l']
-                    entryExtra=defaultifyMap(entry,'s',"")
-                    untyped.append( u"'{}' {}".format(entryName,entryExtra) )
-
-        #print u"\n".join(typed)
-        #print u"\n".join(untyped)
+            for e in response['d']:
+                entry = Entry(e)
+                if fnmatch.fnmatch(entry.getType().lower(),args['include'].lower()):
+                    generic.append(entry)
+                
         for x in generic:
             x.affectWidths()
         Entry.buildFormat()
