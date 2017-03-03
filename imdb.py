@@ -5,9 +5,11 @@ import argparse
 import fnmatch
 import json
 import os
+import pyperclip
 import requests
 import string
 import sys
+import unicodedata
 import urllib
 
 from sys import platform
@@ -43,29 +45,32 @@ def imdbType(key):
     return defaultifyMap(imdbTypes,key,"")
 
 class Entry:
-    widths = [4,16,-1,-1]
-    fmt = u"{0:4} {1:16} {2} {3}"
+    widths = [2,4,16,-1,-1,-1]
+    fmt = u"{0:4} {1:16} {2} {3} {4} {5}"
+    index = -1
     
     def __init__(self,entry):
         self.entry = entry
         self.details = None
 
     def __str__(self):
-        return Entry.fmt.format(self.getYear(),self.getType(),self.getName(),self.getDetails())
+        return Entry.fmt.format(self.getIndex(),self.getYear(),self.getType(),self.getName(),self.getDetails(),self.getPlex())
 
     def affectWidths(self):
-        Entry.widths[0] = max(Entry.widths[0],len(self.getYear()))
-        Entry.widths[1] = max(Entry.widths[1],len(self.getType()))
-        Entry.widths[2] = max(Entry.widths[2],len(self.getName()))
-        Entry.widths[3] = max(Entry.widths[3],len(self.getDetails()))
+        Entry.widths[0] = max(Entry.widths[0],len("{}".format(self.getIndex())))
+        Entry.widths[1] = max(Entry.widths[1],len(self.getYear()))
+        Entry.widths[2] = max(Entry.widths[2],len(self.getType()))
+        Entry.widths[3] = max(Entry.widths[3],len(self.getName()))
+        Entry.widths[4] = max(Entry.widths[4],len(self.getDetails()))
+        Entry.widths[5] = max(Entry.widths[5],len(self.getPlex()))
 
     @staticmethod
     def buildFormat():
-        Entry.fmt = u"{{0:{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}}".format(max(1,Entry.widths[0]),max(1,Entry.widths[1]),max(1,Entry.widths[2]),max(1,Entry.widths[3]))
+        Entry.fmt = u"{{0:{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}} | {{4:{4}}} | {{5:{5}}}".format(max(1,Entry.widths[0]),max(1,Entry.widths[1]),max(1,Entry.widths[2]),max(1,Entry.widths[3]),max(1,Entry.widths[4]),max(1,Entry.widths[5]))
 
     @staticmethod
     def getHeader():
-        return Entry.fmt.format("Year","Type","Name","Details")
+        return Entry.fmt.format("Index","Year","Type","Name","Details","Plex Name")
     
     def getType(self):
         if 'q' in self.entry:
@@ -76,6 +81,30 @@ class Entry:
                 return imdbType(rawDetails[0])
         return "";
 
+    def getExtendedPlex(self):
+        return u"{} ({}).mkv  {}".format(self.getPlexName(),self.getYear(),self.getDetails())
+
+    def getPlex(self):
+        return u"{} ({}).mkv".format(self.getPlexName(),self.getYear())
+
+    def getPlexName(self):
+        temp = self.getName()
+        temp = unicodedata.normalize('NFKD',temp).encode('ascii','ignore')
+        temp = temp.replace(':'," - ")
+        temp = temp.replace('!',"")
+        temp = temp.replace("'","")
+        temp = temp.replace("\t"," ")
+        temp = temp.replace("\r"," ")
+        temp = temp.replace("\n"," ")
+        temp = temp.replace("  "," ")
+        return temp
+
+    def getIndex(self):
+        return self.index;
+
+    def setIndex(self, value):
+        self.index = value;
+    
     def getName(self):
         if 'l' in self.entry:
             return self.entry['l']
@@ -104,7 +133,9 @@ class Entry:
     
 def main(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--include',dest='include',default='*',help='Include Glob Filter');
+    parser.add_argument('-i','--include',dest='include',nargs='*',default=['feature','video','tv series','tv movie'],help='Include Glob Filter');
+    parser.add_argument('-I','--index',dest='index',type=int,default=0,help='Index to copy [-1 to disable]');
+    parser.add_argument('-p','--plex',dest='plex',action='store_true',help='Print in plex format'); 
     parser.add_argument('-v','--verbose',dest='verbose',action='store_true',help='Be verbose');
     parser.add_argument('-vv','--reallyVerbose',dest='reallyVerbose',action='store_true',help='Be verbose');
     parser.add_argument(dest='query',nargs='+',help='query')
@@ -146,14 +177,26 @@ def main(argv):
         if 'd' in response: 
             for e in response['d']:
                 entry = Entry(e)
-                if fnmatch.fnmatch(entry.getType().lower(),args['include'].lower()):
-                    generic.append(entry)
-                
-        for x in generic:
-            x.affectWidths()
-        Entry.buildFormat()
-        print Entry.getHeader()
-        print u"\n".join([unicode(x) for x in generic])
+                for pattern in args['include']:
+                    if fnmatch.fnmatch(entry.getType().lower(),pattern.lower()):
+                        generic.append(entry)
+
+        if args['plex']:
+            for x in generic:
+                print x.getExtendedPlex()
+        else:
+            index = 0
+            for x in generic:
+                x.setIndex(index)
+                index += 1
+            for x in generic:
+                x.affectWidths()
+            Entry.buildFormat()
+            print Entry.getHeader()
+            print u"\n".join([unicode(x) for x in generic])
+
+        if len(generic) >= args['index'] + 1:
+            pyperclip.copy(generic[args['index']].getPlex())
 
 if __name__ == "__main__":
     main(sys.argv[1:])
