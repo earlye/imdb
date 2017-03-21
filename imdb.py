@@ -45,7 +45,7 @@ def imdbType(key):
     return defaultifyMap(imdbTypes,key,"")
 
 class Entry:
-    widths = [2,4,16,-1,-1,-1]
+    widths = [5,4,16,-1,-1,-1]
     fmt = u"{0:4} {1:16} {2} {3} {4} {5}"
     index = -1
     
@@ -66,7 +66,7 @@ class Entry:
 
     @staticmethod
     def buildFormat():
-        Entry.fmt = u"{{0:{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}} | {{4:{4}}} | {{5:{5}}}".format(max(1,Entry.widths[0]),max(1,Entry.widths[1]),max(1,Entry.widths[2]),max(1,Entry.widths[3]),max(1,Entry.widths[4]),max(1,Entry.widths[5]))
+        Entry.fmt = u"{{0:<{0}}} | {{1:{1}}} | {{2:{2}}} | {{3:{3}}} | {{4:{4}}} | {{5:{5}}}".format(max(1,Entry.widths[0]),max(1,Entry.widths[1]),max(1,Entry.widths[2]),max(1,Entry.widths[3]),max(1,Entry.widths[4]),max(1,Entry.widths[5]))
 
     @staticmethod
     def getHeader():
@@ -97,6 +97,12 @@ class Entry:
         temp = temp.replace("\r"," ")
         temp = temp.replace("\n"," ")
         temp = temp.replace("  "," ")
+        if temp.startswith("The "):
+            temp = temp[4:]
+        if temp.startswith("A "):
+            temp = temp[2:]
+        if temp.startswith("An "):
+            temp = temp[3:]
         return temp
 
     def getIndex(self):
@@ -132,18 +138,19 @@ class Entry:
             
     
 def main(argv):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--include',dest='include',nargs='*',default=['feature','video','tv series','tv movie'],help='Include Glob Filter');
-    parser.add_argument('-I','--index',dest='index',type=int,default=0,help='Index to copy [-1 to disable]');
+    parser = argparse.ArgumentParser(argv[0])
+    parser.add_argument('-f','--filter',dest='include',nargs='*',default=['feature','video','tv series','tv movie'],help='Include Glob Filter');
+    parser.add_argument('-i','--index',dest='copyIndex',type=int,default=0,help='Index to copy [-1 to disable]');
     parser.add_argument('-p','--plex',dest='plex',action='store_true',help='Print in plex format'); 
     parser.add_argument('-v','--verbose',dest='verbose',action='store_true',help='Be verbose');
     parser.add_argument('-vv','--reallyVerbose',dest='reallyVerbose',action='store_true',help='Be verbose');
     parser.add_argument(dest='query',nargs='+',help='query')
-    args = vars(parser.parse_args(argv))
+    args = vars(parser.parse_args(argv[1:]))
 
     reallyVerbose = args['reallyVerbose']
     verbose = reallyVerbose or args['verbose']
     query = args['query']
+    copyIndex = args['copyIndex']
 
     query = [queryTerm.lower() for queryTerm in query if not imdbHates(queryTerm)]
     
@@ -173,31 +180,32 @@ def main(argv):
         if reallyVerbose:
             pprint(response)
 
-        generic = []
+        entries = []
         if 'd' in response: 
             for e in response['d']:
                 entry = Entry(e)
                 for pattern in args['include']:
                     if fnmatch.fnmatch(entry.getType().lower(),pattern.lower()):
-                        generic.append(entry)
+                        entries.append(entry)
 
         if args['plex']:
-            for x in generic:
+            for x in entries:
                 print x.getExtendedPlex()
         else:
             index = 0
-            for x in generic:
+            for x in entries:
                 x.setIndex(index)
                 index += 1
-            for x in generic:
+            for x in entries:
                 x.affectWidths()
             Entry.buildFormat()
             print Entry.getHeader()
-            print u"\n".join([unicode(x) for x in generic])
+            print u"\n".join([unicode(x) for x in entries])
 
-        if len(generic) >= args['index'] + 1:
-            pyperclip.copy(generic[args['index']].getPlex())
+        if len(entries) >= copyIndex + 1:
+            pyperclip.copy(entries[copyIndex].getPlex())
+
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main(sys.argv)
 
