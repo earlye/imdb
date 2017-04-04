@@ -137,9 +137,10 @@ class Entry:
         return self.details
             
     
-def main(argv):
+def main():
+    argv = sys.argv
     parser = argparse.ArgumentParser(argv[0])
-    parser.add_argument('-f','--filter',dest='include',nargs='*',default=['feature','video','tv series','tv movie'],help='Include Glob Filter');
+    parser.add_argument('-f','--filter',dest='include',nargs='*',default=['feature','video','tv series','tv movie','tv special'],help='Include Glob Filter');
     parser.add_argument('-i','--index',dest='copyIndex',type=int,default=0,help='Index to copy [-1 to disable]');
     parser.add_argument('-p','--plex',dest='plex',action='store_true',help='Print in plex format'); 
     parser.add_argument('-v','--verbose',dest='verbose',action='store_true',help='Be verbose');
@@ -151,6 +152,7 @@ def main(argv):
     verbose = reallyVerbose or args['verbose']
     query = args['query']
     copyIndex = args['copyIndex']
+    includes = args['include']
 
     query = [queryTerm.lower() for queryTerm in query if not imdbHates(queryTerm)]
     
@@ -161,6 +163,7 @@ def main(argv):
     if verbose:
         print "Performing the following imdb query: {}".format(query)
         print "url:{}".format(url)
+        print "Using the following filters: {}".format(includes)
 
     r = requests.get(url, headers={'Accept':'application/json'})
     if r.status_code < 200 or r.status_code > 299:
@@ -184,7 +187,7 @@ def main(argv):
         if 'd' in response: 
             for e in response['d']:
                 entry = Entry(e)
-                for pattern in args['include']:
+                for pattern in includes:
                     if fnmatch.fnmatch(entry.getType().lower(),pattern.lower()):
                         entries.append(entry)
 
@@ -207,5 +210,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
 
