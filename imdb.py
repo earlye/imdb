@@ -91,6 +91,7 @@ class Entry:
         temp = self.getName()
         temp = unicodedata.normalize('NFKD',temp).encode('ascii','ignore')
         temp = temp.replace(':'," - ")
+        temp = temp.replace('&'," ")
         temp = temp.replace('!',"")
         temp = temp.replace("'","")
         temp = temp.replace("\t"," ")
